@@ -1,29 +1,29 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import {
+  Archive,
   CalendarDays,
   Check,
   CheckCircle2,
   Circle,
   Clock3,
   ListTodo,
+  MoreVertical,
   Pencil,
   Plus,
-  Trash2,
   X,
+  RotateCcw,
+  Moon,
+  Sun,
 } from "lucide-react";
 
 import styles from "./page.module.css";
 
 type TaskStatus = "Todo" | "In-Progress" | "Complete";
-type TaskFilter = "all" | "active" | "completed";
+type TaskFilter = "all" | "active" | "completed" | "archived";
 
-type TaskTopic =
-  | "Database"
-  | "Development"
-  | "Documentation"
-  | "Testing";
+type TaskTopic = string;
 
 type Task = {
   id: number;
@@ -32,6 +32,7 @@ type Task = {
   dueDate: string;
   status: TaskStatus;
   topic: TaskTopic;
+  archivedAt?: string | null;
 };
 
 type TaskForm = {
@@ -146,7 +147,7 @@ const emptyForm: TaskForm = {
   description: "",
   dueDate: "",
   status: "Todo",
-  topic: "Development",
+  topic: "",
 };
 
 const statusOrder: Record<TaskStatus, number> = {
@@ -209,26 +210,56 @@ export default function HomePage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [form, setForm] = useState<TaskForm>(emptyForm);
+  const [openMenuTaskId, setOpenMenuTaskId] = useState<number | null>(
+    null,
+  );
 
-  const totalTasks = tasks.length;
+  const [draggedTaskId, setDraggedTaskId] = useState<number | null>(
+    null,
+  );
 
-  const completedTasks = tasks.filter(
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  
+  useEffect(() => {
+    const savedTheme = window.localStorage.getItem("todo-theme");
+
+    if (savedTheme) {
+      setIsDarkMode(savedTheme === "dark");
+      return;
+    }
+
+    const prefersDarkMode = window.matchMedia(
+      "(prefers-color-scheme: dark)",
+    ).matches;
+
+    setIsDarkMode(prefersDarkMode);
+  }, []);
+  const unarchivedTasks = tasks.filter((task) => !task.archivedAt);
+
+  const archivedTasks = tasks.filter((task) => Boolean(task.archivedAt));
+
+  const totalTasks = unarchivedTasks.length;
+
+  const completedTasks = unarchivedTasks.filter(
     (task) => task.status === "Complete",
   ).length;
 
   const activeTasks = totalTasks - completedTasks;
 
-  const filteredTasks = tasks.filter((task) => {
-    if (filter === "active") {
-      return task.status !== "Complete";
-    }
+  const filteredTasks =
+    filter === "archived"
+      ? archivedTasks
+      : unarchivedTasks.filter((task) => {
+          if (filter === "active") {
+            return task.status !== "Complete";
+          }
 
-    if (filter === "completed") {
-      return task.status === "Complete";
-    }
+          if (filter === "completed") {
+            return task.status === "Complete";
+          }
 
-    return true;
-  });
+          return true;
+        });
 
   const displayedStatuses: TaskStatus[] =
     filter === "active"
@@ -275,13 +306,28 @@ export default function HomePage() {
     setForm(emptyForm);
   }
 
+  function toggleDarkMode() {
+    setIsDarkMode((currentMode) => {
+      const newMode = !currentMode;
+
+      window.localStorage.setItem(
+        "todo-theme",
+        newMode ? "dark" : "light",
+      );
+
+      return newMode;
+    });
+  }
+
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const title = form.title.trim();
     const description = form.description.trim();
+    const topic = form.topic.trim();
 
-    if (!title || !form.dueDate) {
+    if (!title || !topic || !form.dueDate) {
       return;
     }
 
@@ -295,7 +341,7 @@ export default function HomePage() {
                 description,
                 dueDate: form.dueDate,
                 status: form.status,
-                topic: form.topic,
+                topic,
               }
             : task,
         ),
@@ -307,7 +353,8 @@ export default function HomePage() {
         description,
         dueDate: form.dueDate,
         status: form.status,
-        topic: form.topic,
+        topic,
+        archivedAt: null,
       };
 
       setTasks((currentTasks) => [...currentTasks, newTask]);
@@ -331,21 +378,62 @@ export default function HomePage() {
       ),
     );
   }
-
-  function deleteTask(taskId: number) {
-    const confirmed = window.confirm(
-      "Are you sure you want to delete this task?",
+  function changeTaskStatus(taskId: number, status: TaskStatus) {
+    setTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              status,
+            }
+          : task,
+      ),
     );
 
-    if (!confirmed) {
+    setOpenMenuTaskId(null);
+  }
+
+  function archiveTask(taskId: number) {
+    setTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              archivedAt: new Date().toISOString(),
+            }
+          : task,
+      ),
+    );
+
+    setOpenMenuTaskId(null);
+  }
+
+  function restoreTask(taskId: number) {
+    setTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        task.id === taskId
+          ? {
+              ...task,
+              archivedAt: null,
+            }
+          : task,
+      ),
+    );
+
+    setOpenMenuTaskId(null);
+  }
+
+  function dropTask(status: TaskStatus) {
+    if (draggedTaskId === null || filter === "archived") {
       return;
     }
 
-    setTasks((currentTasks) =>
-      currentTasks.filter((task) => task.id !== taskId),
-    );
+    changeTaskStatus(draggedTaskId, status);
+    setDraggedTaskId(null);
   }
+  
 
+  
   function getTasksByStatus(status: TaskStatus) {
     return [...filteredTasks]
       .filter((task) => task.status === status)
@@ -377,7 +465,11 @@ export default function HomePage() {
   }
 
   return (
-    <>
+    <section
+      className={`${styles.page} ${
+        isDarkMode ? styles.darkMode : ""
+      }`}
+    >
       <header className={styles.header}>
         <nav className={styles.headerInner} aria-label="Main navigation">
           <h1 className={styles.logo}>
@@ -388,14 +480,46 @@ export default function HomePage() {
             My Todo
           </h1>
 
-          <button
-            className={styles.primaryButton}
-            onClick={() => openAddModal()}
-            type="button"
-          >
-            <Plus size={18} aria-hidden="true" />
-            Add Task
-          </button>
+          <menu className={styles.headerActions}>
+            <li>
+              <button
+                className={styles.themeButton}
+                onClick={toggleDarkMode}
+                aria-label={
+                  isDarkMode
+                    ? "Switch to light mode"
+                    : "Switch to dark mode"
+                }
+                title={
+                  isDarkMode
+                    ? "Switch to light mode"
+                    : "Switch to dark mode"
+                }
+                type="button"
+              >
+                {isDarkMode ? (
+                  <Sun size={19} aria-hidden="true" />
+                ) : (
+                  <Moon size={19} aria-hidden="true" />
+                )}
+
+                <strong className={styles.themeButtonText}>
+                  {isDarkMode ? "Light" : "Dark"}
+                </strong>
+              </button>
+            </li>
+
+            <li>
+              <button
+                className={styles.primaryButton}
+                onClick={() => openAddModal()}
+                type="button"
+              >
+                <Plus size={18} aria-hidden="true" />
+                Add Task
+              </button>
+            </li>
+          </menu>
         </nav>
       </header>
 
@@ -507,6 +631,17 @@ export default function HomePage() {
             <CheckCircle2 size={17} aria-hidden="true" />
             Completed
           </button>
+          <button
+            className={`${styles.filterButton} ${
+              filter === "archived" ? styles.activeFilter : ""
+            }`}
+            onClick={() => setFilter("archived")}
+            aria-pressed={filter === "archived"}
+            type="button"
+          >
+            <Archive size={17} aria-hidden="true" />
+            Archive
+          </button>
         </nav>
 
         <section className={boardClass} aria-label="Task board">
@@ -515,7 +650,16 @@ export default function HomePage() {
             const columnTasks = getTasksByStatus(status);
 
             return (
-              <article className={styles.column} key={status}>
+              <article
+                  className={styles.column}
+                  key={status}
+                  onDragOver={(event) => {
+                    if (filter !== "archived") {
+                      event.preventDefault();
+                    }
+                  }}
+                  onDrop={() => dropTask(status)}
+                >
                 <header className={styles.columnHeader}>
                   <section className={styles.columnHeading}>
                     <figure
@@ -548,7 +692,15 @@ export default function HomePage() {
                     const isComplete = task.status === "Complete";
 
                     return (
-                      <li className={styles.taskCard} key={task.id}>
+                      <li
+                          className={`${styles.taskCard} ${
+                            filter !== "archived" ? styles.draggableCard : ""
+                          }`}
+                          key={task.id}
+                          draggable={filter !== "archived"}
+                          onDragStart={() => setDraggedTaskId(task.id)}
+                          onDragEnd={() => setDraggedTaskId(null)}
+                        >
                         <header className={styles.taskTop}>
                           <button
                             className={`${styles.checkbox} ${
@@ -609,15 +761,105 @@ export default function HomePage() {
                               </button>
                             </li>
 
-                            <li>
+                            <li className={styles.menuWrapper}>
                               <button
-                                className={`${styles.iconButton} ${styles.deleteButton}`}
-                                onClick={() => deleteTask(task.id)}
-                                aria-label={`Delete ${task.title}`}
+                                className={styles.iconButton}
+                                onClick={() =>
+                                  setOpenMenuTaskId((currentId) =>
+                                    currentId === task.id ? null : task.id,
+                                  )
+                                }
+                                aria-label={`Open actions for ${task.title}`}
+                                aria-expanded={openMenuTaskId === task.id}
                                 type="button"
                               >
-                                <Trash2 size={16} aria-hidden="true" />
+                                <MoreVertical size={18} aria-hidden="true" />
                               </button>
+
+                              {openMenuTaskId === task.id && (
+                                <>
+                                  <button
+                                    className={styles.popupBackdrop}
+                                    onClick={() => setOpenMenuTaskId(null)}
+                                    aria-label="Close task actions"
+                                    type="button"
+                                  />
+
+                                  <section
+                                    className={styles.actionPopup}
+                                    aria-label={`Actions for ${task.title}`}
+                                  >
+                                    <header className={styles.popupHeader}>
+                                      <strong>Change task</strong>
+                                    </header>
+
+                                    <section className={styles.popupActions}>
+                                      {filter === "archived" ? (
+                                        <button
+                                          className={styles.popupActionButton}
+                                          onClick={() => restoreTask(task.id)}
+                                          type="button"
+                                        >
+                                          <RotateCcw size={17} aria-hidden="true" />
+                                          Restore
+                                        </button>
+                                      ) : (
+                                        <>
+                                          {task.status !== "Todo" && (
+                                            <button
+                                              className={styles.popupActionButton}
+                                              onClick={() =>
+                                                changeTaskStatus(task.id, "Todo")
+                                              }
+                                              type="button"
+                                            >
+                                              <Circle size={17} aria-hidden="true" />
+                                              To Do
+                                            </button>
+                                          )}
+
+                                          {task.status !== "In-Progress" && (
+                                            <button
+                                              className={styles.popupActionButton}
+                                              onClick={() =>
+                                                changeTaskStatus(task.id, "In-Progress")
+                                              }
+                                              type="button"
+                                            >
+                                              <Clock3 size={17} aria-hidden="true" />
+                                              In Progress
+                                            </button>
+                                          )}
+
+                                          {task.status !== "Complete" && (
+                                            <button
+                                              className={styles.popupActionButton}
+                                              onClick={() =>
+                                                changeTaskStatus(task.id, "Complete")
+                                              }
+                                              type="button"
+                                            >
+                                              <CheckCircle2 size={17} aria-hidden="true" />
+                                              Complete
+                                            </button>
+                                          )}
+
+                                          <button
+                                            className={`${styles.popupActionButton} ${styles.archiveAction}`}
+                                            onClick={() => archiveTask(task.id)}
+                                            type="button"
+                                          >
+                                            <Archive size={17} aria-hidden="true" />
+                                            Archive
+                                          </button>
+                                        </>
+                                      )}
+                                    </section>
+                                  </section>
+                                </>
+                                
+                              )}
+                        
                             </li>
                           </menu>
                         </footer>
@@ -712,21 +954,18 @@ export default function HomePage() {
                 <label className={styles.formGroup}>
                   <strong>Topic</strong>
 
-                  <select
+                  <input
+                    type="text"
                     value={form.topic}
                     onChange={(event) =>
                       setForm((currentForm) => ({
                         ...currentForm,
-                        topic: event.target.value as TaskTopic,
+                        topic: event.target.value,
                       }))
                     }
+                    placeholder="e.g. Database"
                     required
-                  >
-                    <option value="Database">Database</option>
-                    <option value="Development">Development</option>
-                    <option value="Documentation">Documentation</option>
-                    <option value="Testing">Testing</option>
-                  </select>
+                  />
                 </label>
 
                 <label className={styles.formGroup}>
@@ -782,6 +1021,6 @@ export default function HomePage() {
           </section>
         </aside>
       )}
-    </>
+    </section>
   );
 }
