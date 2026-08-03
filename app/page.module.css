@@ -1058,6 +1058,182 @@
   color: #a15300;
   background: #fff2e2;
 }
+.filterAddButton {
+  margin-left: auto;
+  flex: 0 0 auto;
+}
+
+.listView {
+  padding: 24px;
+  border: 1px solid #e7e8ef;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.listHeader {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.listHeaderText {
+  min-width: 0;
+}
+
+.listHeading {
+  margin: 0 0 5px;
+  color: #323341;
+  font-size: 21px;
+}
+
+.listDescription {
+  margin: 0;
+  color: #747684;
+  font-size: 14px;
+}
+
+.sortControl {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #4a4c59;
+  font-size: 14px;
+}
+
+.sortControl select {
+  min-height: 40px;
+  padding: 0 36px 0 12px;
+  border: 1px solid #dedfe7;
+  border-radius: 8px;
+  color: #323341;
+  background: white;
+}
+
+.filteredTaskList {
+  display: grid;
+  gap: 12px;
+}
+
+.listTaskCard {
+  padding: 18px;
+  border: 1px solid #e3e4eb;
+  border-radius: 11px;
+  background: white;
+  box-shadow: 0 3px 10px rgba(27, 28, 37, 0.035);
+}
+
+.listTaskTop {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.listTaskText {
+  min-width: 0;
+  flex: 1;
+}
+
+.listTaskText h3 {
+  margin: 0 0 7px;
+  color: #30313e;
+  font-size: 16px;
+}
+
+.listTaskText p {
+  margin: 0;
+  color: #747684;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.listTaskBadges {
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.statusBadge {
+  padding: 4px 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.statusTodo {
+  color: #5b30df;
+  background: #f0ecff;
+}
+
+.statusInProgress {
+  color: #d87500;
+  background: #fff3df;
+}
+
+.statusComplete {
+  color: #16863a;
+  background: #eaf8ed;
+}
+
+.listTaskBottom {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid #ececf1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.listEmptyState {
+  min-height: 180px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  border: 1px dashed #d8d9e2;
+  border-radius: 11px;
+  color: #747684;
+}
+
+.listEmptyState p {
+  margin: 0;
+}
+
+.darkMode .listView,
+.darkMode .listTaskCard {
+  border-color: #383a49;
+  background: #242633;
+}
+
+.darkMode .listHeading,
+.darkMode .listTaskText h3 {
+  color: #f2f2f6;
+}
+
+.darkMode .listDescription,
+.darkMode .listTaskText p,
+.darkMode .sortControl {
+  color: #b9bac5;
+}
+
+.darkMode .sortControl select {
+  border-color: #454756;
+  color: #f2f2f6;
+  background: #2d2f3c;
+}
+
+.darkMode .listTaskBottom {
+  border-color: #3c3e4c;
+}
+
+.darkMode .listEmptyState {
+  border-color: #454756;
+  color: #b9bac5;
+}
 
 @keyframes popupEnter {
   from {
@@ -1071,6 +1247,29 @@
   }
 }
 
+@media (max-width: 620px) {
+  .listView {
+    padding: 14px;
+  }
+
+  .listHeader {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sortControl {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .sortControl select {
+    width: 100%;
+  }
+
+  .listTaskBottom {
+    align-items: flex-start;
+  }
+}
 
 @media (max-width: 1100px) {
   .threeColumns {

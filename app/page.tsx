@@ -23,6 +23,12 @@ import styles from "./page.module.css";
 type TaskStatus = "Todo" | "In-Progress" | "Complete";
 type TaskFilter = "all" | "active" | "completed" | "archived";
 
+type TaskSort =
+  | "dueDateAscending"
+  | "dueDateDescending"
+  | "topicAscending"
+  | "topicDescending";
+
 type TaskTopic = string;
 
 type Task = {
@@ -139,6 +145,8 @@ export default function HomePage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [taskError, setTaskError] = useState("");
   const [filter, setFilter] = useState<TaskFilter>("all");
+  const [listSort, setListSort] =
+    useState<TaskSort>("dueDateAscending");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
   const [form, setForm] = useState<TaskForm>(emptyForm);
@@ -191,7 +199,9 @@ export default function HomePage() {
         const result = await response.json();
 
         if (!response.ok) {
-          throw new Error(result.error ?? "Failed to load tasks");
+          throw new Error(
+            result.error ?? "Failed to load tasks",
+          );
         }
 
         if (!ignoreResponse) {
@@ -213,7 +223,7 @@ export default function HomePage() {
     return () => {
       ignoreResponse = true;
     };
-  }, []);
+  }, []);;
 
 
 
@@ -239,6 +249,44 @@ export default function HomePage() {
 
           return true;
         });
+
+  const sortedListTasks = [...filteredTasks].sort(
+    (taskA, taskB) => {
+      const dateComparison =
+        getDueDateValue(taskA.dueDate) -
+        getDueDateValue(taskB.dueDate);
+
+      const topicComparison = taskA.topic.localeCompare(
+        taskB.topic,
+        undefined,
+        {
+          sensitivity: "base",
+        },
+      );
+
+      const titleComparison = taskA.title.localeCompare(
+        taskB.title,
+        undefined,
+        {
+          sensitivity: "base",
+        },
+      );
+
+      if (listSort === "dueDateDescending") {
+        return -dateComparison || topicComparison || titleComparison;
+      }
+
+      if (listSort === "topicAscending") {
+        return topicComparison || dateComparison || titleComparison;
+      }
+
+      if (listSort === "topicDescending") {
+        return -topicComparison || dateComparison || titleComparison;
+      }
+
+      return dateComparison || topicComparison || titleComparison;
+    },
+  );
 
   const displayedStatuses: TaskStatus[] =
     filter === "active"
@@ -497,6 +545,245 @@ export default function HomePage() {
     };
   }
 
+  function getListHeading() {
+      if (filter === "active") {
+        return "Active Tasks";
+      }
+
+      if (filter === "completed") {
+        return "Completed Tasks";
+      }
+
+      if (filter === "archived") {
+        return "Archived Tasks";
+      }
+
+      return "Tasks";
+    }
+
+    function getStatusLabel(status: TaskStatus) {
+      if (status === "In-Progress") {
+        return "In Progress";
+      }
+
+      if (status === "Complete") {
+        return "Completed";
+      }
+
+      return "To Do";
+    }
+
+    function getStatusClass(status: TaskStatus) {
+      if (status === "In-Progress") {
+        return styles.statusInProgress;
+      }
+
+      if (status === "Complete") {
+        return styles.statusComplete;
+      }
+
+      return styles.statusTodo;
+    }
+
+    function renderFilteredTaskList() {
+      return (
+        <section
+          className={styles.listView}
+          aria-label={`${getListHeading()} list`}
+        >
+          <header className={styles.listHeader}>
+            <section className={styles.listHeaderText}>
+              <h2 className={styles.listHeading}>
+                {getListHeading()}
+              </h2>
+
+              <p className={styles.listDescription}>
+                {sortedListTasks.length}{" "}
+                {sortedListTasks.length === 1 ? "task" : "tasks"}
+              </p>
+            </section>
+
+            <label className={styles.sortControl}>
+              <strong>Sort by</strong>
+
+              <select
+                value={listSort}
+                onChange={(event) =>
+                  setListSort(event.target.value as TaskSort)
+                }
+              >
+                <option value="dueDateAscending">
+                  Due date: earliest first
+                </option>
+
+                <option value="dueDateDescending">
+                  Due date: latest first
+                </option>
+
+                <option value="topicAscending">
+                  Topic: A to Z
+                </option>
+
+                <option value="topicDescending">
+                  Topic: Z to A
+                </option>
+              </select>
+            </label>
+          </header>
+
+          <ul className={styles.filteredTaskList}>
+            {sortedListTasks.length === 0 && (
+              <li className={styles.listEmptyState}>
+                <CheckCircle2 size={30} aria-hidden="true" />
+
+                <p>No tasks in this section</p>
+              </li>
+            )}
+
+            {sortedListTasks.map((task) => {
+              const isComplete = task.status === "Complete";
+              const isOverdue = isTaskOverdue(task);
+
+              return (
+                <li className={styles.listTaskCard} key={task.id}>
+                  <header className={styles.listTaskTop}>
+                    {filter !== "archived" && (
+                      <button
+                        className={`${styles.checkbox} ${
+                          isComplete
+                            ? styles.checkedCheckbox
+                            : ""
+                        }`}
+                        onClick={() => void toggleCompleted(task)}
+                        aria-label={
+                          isComplete
+                            ? `Mark ${task.title} as active`
+                            : `Mark ${task.title} as completed`
+                        }
+                        type="button"
+                      >
+                        {isComplete && (
+                          <Check
+                            size={14}
+                            strokeWidth={3}
+                            aria-hidden="true"
+                          />
+                        )}
+                      </button>
+                    )}
+
+                    <section className={styles.listTaskText}>
+                      <header className={styles.listTaskBadges}>
+                        <small className={styles.topicBadge}>
+                          {task.topic}
+                        </small>
+
+                        <strong
+                          className={`${styles.statusBadge} ${getStatusClass(
+                            task.status,
+                          )}`}
+                        >
+                          {getStatusLabel(task.status)}
+                        </strong>
+                      </header>
+
+                      <h3
+                        className={
+                          isComplete
+                            ? styles.completedTitle
+                            : ""
+                        }
+                      >
+                        {task.title}
+                      </h3>
+
+                      {task.description && (
+                        <p>{task.description}</p>
+                      )}
+                    </section>
+                  </header>
+
+                  <footer className={styles.listTaskBottom}>
+                    <time
+                      className={`${styles.date} ${
+                        isOverdue
+                          ? styles.overdueDate
+                          : ""
+                      }`}
+                      dateTime={task.dueDate}
+                    >
+                      <CalendarDays
+                        size={14}
+                        aria-hidden="true"
+                      />
+
+                      {formatDate(task.dueDate)}
+
+                      {isOverdue && (
+                        <strong className={styles.overdueLabel}>
+                          Overdue
+                        </strong>
+                      )}
+                    </time>
+
+                    <menu className={styles.taskActions}>
+                      <li>
+                        <button
+                          className={styles.iconButton}
+                          onClick={() => openEditModal(task)}
+                          aria-label={`Edit ${task.title}`}
+                          type="button"
+                        >
+                          <Pencil
+                            size={16}
+                            aria-hidden="true"
+                          />
+                        </button>
+                      </li>
+
+                      <li>
+                        {filter === "archived" ? (
+                          <button
+                            className={styles.iconButton}
+                            onClick={() =>
+                              void restoreTask(task.id)
+                            }
+                            aria-label={`Restore ${task.title}`}
+                            title="Restore task"
+                            type="button"
+                          >
+                            <RotateCcw
+                              size={16}
+                              aria-hidden="true"
+                            />
+                          </button>
+                        ) : (
+                          <button
+                            className={styles.iconButton}
+                            onClick={() =>
+                              void archiveTask(task.id)
+                            }
+                            aria-label={`Archive ${task.title}`}
+                            title="Archive task"
+                            type="button"
+                          >
+                            <Archive
+                              size={16}
+                              aria-hidden="true"
+                            />
+                          </button>
+                        )}
+                      </li>
+                    </menu>
+                  </footer>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
+      );
+    }
+
   return (
     <section
       className={`${styles.page} ${
@@ -542,16 +829,6 @@ export default function HomePage() {
               </button>
             </li>
 
-            <li>
-              <button
-                className={styles.primaryButton}
-                onClick={() => openAddModal()}
-                type="button"
-              >
-                <Plus size={18} aria-hidden="true" />
-                Add Task
-              </button>
-            </li>
           </menu>
         </nav>
       </header>
@@ -709,7 +986,16 @@ export default function HomePage() {
             <Archive size={17} aria-hidden="true" />
             Archive
           </button>
+          <button
+                className={`${styles.primaryButton} ${styles.filterAddButton}`}
+                onClick={() => openAddModal()}
+                type="button"
+              >
+                <Plus size={18} aria-hidden="true" />
+                Add Task
+              </button>
         </nav>
+        {filter === "all" ? (
 
         <section className={boardClass} aria-label="Task board">
           {displayedStatuses.map((status) => {
@@ -960,8 +1246,11 @@ export default function HomePage() {
               </article>
             );
           })}
-        </section>
-      </main>
+          </section>
+) : (
+  renderFilteredTaskList()
+)}
+</main>
 
       {isModalOpen && (
         <aside
