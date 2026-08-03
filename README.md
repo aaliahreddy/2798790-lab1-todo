@@ -23,11 +23,10 @@ nvm use 24
 ```
 
 ## Clone the Repository
-
+```bash
 git clone https://github.com/aaliahreddy/2798790-lab1-todo.git
-
 cd 2798790-lab1-todo
-
+```
 ## Install the Application
 
 ```bash
