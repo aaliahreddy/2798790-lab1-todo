@@ -33,7 +33,15 @@ cd 2798790-lab1-todo
 npm ci
 npx playwrite install chromium
 ```
-`npm ci` installs the packages in `package-lock.json`. `npx playwrite install chromium` installs the Chromium browser required by the automated tests.
+
+or
+
+```bash
+npm install
+npx playwrite install chromium
+```
+
+`npm ci/npm install` installs the packages in `package-lock.json`. `npx playwrite install chromium` installs the Chromium browser required by the automated tests.
 
 ## Run the Application
 
