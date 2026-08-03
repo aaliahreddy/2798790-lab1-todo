@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# My Todo
 
-## Getting Started
+A local-first todo application built with Next.js and SQLite.
 
-First, run the development server:
+# Required Software
+
+The application requires Node.js version 24.
+
+Check the installed versions with:
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+node --version
+npm --version
+```
+The Node.js version should begin with:
+v24.
+
+To install and selecct Node.js 21:
+
+```bash
+nvm install 24
+nvm use 24
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Clone the Repository
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+git clone https://github.com/aaliahreddy/2798790-lab1-todo.git
+cd 2798790-lab1-todo
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Install the Application
 
-## Learn More
+npm ci
+npx playwrite install chromium
 
-To learn more about Next.js, take a look at the following resources:
+`npm ci` installs the packages in `package-lock.json`. `npx playwrite install chromium` installs the Chromium browser required by the automated tests.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Run the Application
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Start the development server:
 
-## Deploy on Vercel
+npm run dev
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Open the following address in a browser:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+http://localhost:3000
+
+Stop the server:
+
+Ctrl+C
+
+## Run the Tests
+
+To run tests:
+
+npm test
+
+**This repository does not use AI code generation.**
+**This repository does not use AI in-line editing tools.**
+**This repository does not use AI code review.**
+
+---
+
+**AI Declaration**: The preceding document was reviewed and edited with: ChatGPT-Web[GPT-5.6 Thinking]
