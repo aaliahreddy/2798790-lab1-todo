@@ -53,8 +53,11 @@ Ctrl+C
 ## Run the Tests
 
 To run tests:
-
+```bash
 npm test
+```
+
+## AI Declaration for Repository
 
 **This repository does not use AI code generation.**
 
