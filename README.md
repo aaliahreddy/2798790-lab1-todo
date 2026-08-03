@@ -25,21 +25,23 @@ nvm use 24
 ## Clone the Repository
 
 git clone https://github.com/aaliahreddy/2798790-lab1-todo.git
+
 cd 2798790-lab1-todo
 
 ## Install the Application
 
+```bash
 npm ci
 npx playwrite install chromium
-
+```
 `npm ci` installs the packages in `package-lock.json`. `npx playwrite install chromium` installs the Chromium browser required by the automated tests.
 
 ## Run the Application
 
 Start the development server:
-
+```bash
 npm run dev
-
+```
 Open the following address in a browser:
 
 http://localhost:3000
@@ -55,7 +57,9 @@ To run tests:
 npm test
 
 **This repository does not use AI code generation.**
+
 **This repository does not use AI in-line editing tools.**
+
 **This repository does not use AI code review.**
 
 ---

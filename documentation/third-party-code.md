@@ -33,5 +33,7 @@ This document lists the third-party packages installed and the reason why each w
 The third-party packages listed above were installed through npm and are used through their public APIs. Exact dependency information is recorded in `package.json` and `package-lock.json`.
 
 No third-party source code was copied directly into the repository.
+
 ---
+
 **AI Declaration**: The preceding document was reviewed and edited with: ChatGPT-Web[GPT-5.6 Thinking]
