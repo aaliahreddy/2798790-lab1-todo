@@ -58,11 +58,11 @@ npm test
 
 ## AI Declaration for Repository
 
-**This repository does not use AI code generation.**
+**This repository makes use of AI code generation using the following tool: ChatGPT-Web[GPT-5.6 Thinking].**
 
 **This repository does not use AI in-line editing tools.**
 
-**This repository does not use AI code review.**
+**This repository makes use of AI code-review using the following tool: ChatGPT-Web[GPT-5.6 Thinking].**
 
 ---
 
