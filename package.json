@@ -10,7 +10,9 @@
     "dev:open": "next dev & until curl -s http://localhost:3000 >/dev/null; do sleep 0.2; done; open http://localhost:3000; wait",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test": "node scripts/reset-test-db.mjs && playwright test",
+    "test:ui": "node scripts/reset-test-db.mjs && playwright test --ui"
   },
   "dependencies": {
     "better-sqlite3": "^13.0.2",
@@ -20,6 +22,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",

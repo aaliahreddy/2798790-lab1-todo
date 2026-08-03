@@ -1,15 +1,16 @@
-import Database from "better-sqlite3";
 import fs from "node:fs";
 import path from "node:path";
+import Database from "better-sqlite3";
 
 export function createDatabase(databasePath: string) {
-  const databaseDirectory = path.dirname(databasePath);
+  const resolvedDatabasePath = path.resolve(databasePath);
+  const databaseDirectory = path.dirname(resolvedDatabasePath);
 
   fs.mkdirSync(databaseDirectory, {
     recursive: true,
   });
 
-  const database = new Database(databasePath);
+  const database = new Database(resolvedDatabasePath);
 
   database.pragma("foreign_keys = ON");
   database.pragma("journal_mode = WAL");

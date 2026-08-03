@@ -45,3 +45,10 @@ data/*.db
 data/*.db-shm
 data/*.db-wal
 data/*.sqlite
+
+# Playwright output
+playwright-report/
+test-results/
+
+# Throwaway test database
+.tmp/
