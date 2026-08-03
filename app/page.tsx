@@ -32,8 +32,20 @@ type Task = {
   dueDate: string;
   status: TaskStatus;
   topic: TaskTopic;
-  archivedAt?: string | null;
+  archivedAt: string | null;
 };
+
+type TaskUpdate = Partial<
+  Pick<
+    Task,
+    | "title"
+    | "description"
+    | "dueDate"
+    | "status"
+    | "topic"
+    | "archivedAt"
+  >
+>;
 
 type TaskForm = {
   title: string;
@@ -43,104 +55,6 @@ type TaskForm = {
   topic: TaskTopic;
 };
 
-const initialTasks: Task[] = [
-  {
-    id: 1,
-    title: "Design landing page",
-    description: "Create the initial landing page for the app",
-    dueDate: "2026-08-05",
-    status: "Todo",
-    topic: "Development",
-  },
-  {
-    id: 2,
-    title: "Add database schema",
-    description: "Create SQLite tables for tasks",
-    dueDate: "2026-08-06",
-    status: "Todo",
-    topic: "Database",
-  },
-  {
-    id: 3,
-    title: "Implement task filters",
-    description: "Add All, Active and Completed filters",
-    dueDate: "2026-08-07",
-    status: "Todo",
-    topic: "Development",
-  },
-  {
-    id: 4,
-    title: "Write README",
-    description: "Document the project for submission",
-    dueDate: "2026-08-08",
-    status: "Todo",
-    topic: "Documentation",
-  },
-  {
-    id: 5,
-    title: "Build add task form",
-    description: "Create a form to add new tasks",
-    dueDate: "2026-08-04",
-    status: "In-Progress",
-    topic: "Development",
-  },
-  {
-    id: 6,
-    title: "Connect to SQLite",
-    description: "Set up the database connection in Next.js",
-    dueDate: "2026-08-04",
-    status: "In-Progress",
-    topic: "Database",
-  },
-  {
-    id: 7,
-    title: "Display tasks list",
-    description: "Fetch tasks from the database and display them",
-    dueDate: "2026-08-05",
-    status: "In-Progress",
-    topic: "Development",
-  },
-  {
-    id: 8,
-    title: "Set up Next.js project",
-    description: "Initialise the project and install dependencies",
-    dueDate: "2026-07-29",
-    status: "Complete",
-    topic: "Development",
-  },
-  {
-    id: 9,
-    title: "Create layout and UI",
-    description: "Set up the basic layout and styling",
-    dueDate: "2026-07-30",
-    status: "Complete",
-    topic: "Development",
-  },
-  {
-    id: 10,
-    title: "Create tasks table",
-    description: "Create the tasks table in SQLite",
-    dueDate: "2026-07-30",
-    status: "Complete",
-    topic: "Database",
-  },
-  {
-    id: 11,
-    title: "Add task model",
-    description: "Define the Task type and validation",
-    dueDate: "2026-07-31",
-    status: "Complete",
-    topic: "Database",
-  },
-  {
-    id: 12,
-    title: "Test database connection",
-    description: "Verify the database can be queried",
-    dueDate: "2026-07-31",
-    status: "Complete",
-    topic: "Testing",
-  },
-];
 
 const emptyForm: TaskForm = {
   title: "",
@@ -203,9 +117,27 @@ function sortTasks(taskA: Task, taskB: Task) {
     sensitivity: "base",
   });
 }
+function getTodayDate() {
+  const today = new Date();
+
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, "0");
+  const day = String(today.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
+function isTaskOverdue(task: Task) {
+  return (
+    !task.archivedAt &&
+    task.status !== "Complete" &&
+    task.dueDate < getTodayDate()
+  );
+}
 
 export default function HomePage() {
-  const [tasks, setTasks] = useState<Task[]>(initialTasks);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [taskError, setTaskError] = useState("");
   const [filter, setFilter] = useState<TaskFilter>("all");
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<number | null>(null);
@@ -244,7 +176,54 @@ export default function HomePage() {
     (task) => task.status === "Complete",
   ).length;
 
-  const activeTasks = totalTasks - completedTasks;
+  useEffect(() => {
+    let ignoreResponse = false;
+
+    async function loadTasks() {
+      try {
+        setTaskError("");
+
+        const response = await fetch("/api/tasks", {
+          method: "GET",
+          cache: "no-store",
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error ?? "Failed to load tasks");
+        }
+
+        if (!ignoreResponse) {
+          setTasks(result as Task[]);
+        }
+      } catch (error) {
+        if (!ignoreResponse) {
+          setTaskError(
+            error instanceof Error
+              ? error.message
+              : "Failed to load tasks",
+          );
+        }
+      }
+    }
+
+    void loadTasks();
+
+    return () => {
+      ignoreResponse = true;
+    };
+  }, []);
+
+
+
+  const activeTasks = unarchivedTasks.filter(
+    (task) => task.status === "In-Progress"
+  ).length;
+
+  const overdueTasks = unarchivedTasks.filter(
+    isTaskOverdue,
+  ).length;
 
   const filteredTasks =
     filter === "archived"
@@ -319,8 +298,48 @@ export default function HomePage() {
     });
   }
 
+  async function updateTaskInDatabase(
+    taskId: number,
+    changes: TaskUpdate,
+  ) {
+    const response = await fetch("/api/tasks", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        id: taskId,
+        ...changes,
+      }),
+    });
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    const result = await response.json();
+
+    if (!response.ok) {
+      throw new Error(result.error ?? "Failed to update task");
+    }
+
+    const updatedTask = result as Task;
+
+    setTasks((currentTasks) =>
+      currentTasks.map((task) =>
+        task.id === updatedTask.id ? updatedTask : task,
+      ),
+    );
+  }
+
+  function displayTaskError(error: unknown) {
+    setTaskError(
+      error instanceof Error
+        ? error.message
+        : "Something went wrong while saving the task",
+    );
+  }
+
+
+  async function handleSubmit(
+    event: FormEvent<HTMLFormElement>,
+  ) {
     event.preventDefault();
 
     const title = form.title.trim();
@@ -331,104 +350,118 @@ export default function HomePage() {
       return;
     }
 
-    if (editingTaskId !== null) {
-      setTasks((currentTasks) =>
-        currentTasks.map((task) =>
-          task.id === editingTaskId
-            ? {
-                ...task,
-                title,
-                description,
-                dueDate: form.dueDate,
-                status: form.status,
-                topic,
-              }
-            : task,
-        ),
-      );
-    } else {
-      const newTask: Task = {
-        id: Date.now(),
-        title,
-        description,
-        dueDate: form.dueDate,
-        status: form.status,
-        topic,
-        archivedAt: null,
-      };
+    const taskDetails = {
+      title,
+      description,
+      dueDate: form.dueDate,
+      status: form.status,
+      topic,
+    };
 
-      setTasks((currentTasks) => [...currentTasks, newTask]);
+    try {
+      setTaskError("");
+
+      if (editingTaskId !== null) {
+        await updateTaskInDatabase(
+          editingTaskId,
+          taskDetails,
+        );
+      } else {
+        const response = await fetch("/api/tasks", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(taskDetails),
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            result.error ?? "Failed to create task",
+          );
+        }
+
+        const createdTask = result as Task;
+
+        setTasks((currentTasks) => [
+          ...currentTasks,
+          createdTask,
+        ]);
+      }
+
+      closeModal();
+    } catch (error) {
+      displayTaskError(error);
     }
-
-    closeModal();
   }
 
-  function toggleCompleted(task: Task) {
-    setTasks((currentTasks) =>
-      currentTasks.map((currentTask) =>
-        currentTask.id === task.id
-          ? {
-              ...currentTask,
-              status:
-                currentTask.status === "Complete"
-                  ? "Todo"
-                  : "Complete",
-            }
-          : currentTask,
-      ),
-    );
+  async function toggleCompleted(task: Task) {
+    try {
+      setTaskError("");
+
+      await updateTaskInDatabase(task.id, {
+        status:
+          task.status === "Complete"
+            ? "Todo"
+            : "Complete",
+      });
+    } catch (error) {
+      displayTaskError(error);
+    }
   }
-  function changeTaskStatus(taskId: number, status: TaskStatus) {
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              status,
-            }
-          : task,
-      ),
-    );
+  async function changeTaskStatus(
+    taskId: number,
+    status: TaskStatus,
+  ) {
+    try {
+      setTaskError("");
 
-    setOpenMenuTaskId(null);
-  }
+      await updateTaskInDatabase(taskId, {
+        status,
+      });
 
-  function archiveTask(taskId: number) {
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              archivedAt: new Date().toISOString(),
-            }
-          : task,
-      ),
-    );
-
-    setOpenMenuTaskId(null);
+      setOpenMenuTaskId(null);
+    } catch (error) {
+      displayTaskError(error);
+    }
   }
 
-  function restoreTask(taskId: number) {
-    setTasks((currentTasks) =>
-      currentTasks.map((task) =>
-        task.id === taskId
-          ? {
-              ...task,
-              archivedAt: null,
-            }
-          : task,
-      ),
-    );
+  async function archiveTask(taskId: number) {
+    try {
+      setTaskError("");
 
-    setOpenMenuTaskId(null);
+      await updateTaskInDatabase(taskId, {
+        archivedAt: new Date().toISOString(),
+      });
+
+      setOpenMenuTaskId(null);
+    } catch (error) {
+      displayTaskError(error);
+    }
   }
 
-  function dropTask(status: TaskStatus) {
+  async function restoreTask(taskId: number) {
+    try {
+      setTaskError("");
+
+      await updateTaskInDatabase(taskId, {
+        archivedAt: null,
+      });
+
+      setOpenMenuTaskId(null);
+    } catch (error) {
+      displayTaskError(error);
+    }
+  }
+
+  async function dropTask(status: TaskStatus) {
     if (draggedTaskId === null || filter === "archived") {
       return;
     }
 
-    changeTaskStatus(draggedTaskId, status);
+    await changeTaskStatus(draggedTaskId, status);
     setDraggedTaskId(null);
   }
   
@@ -524,7 +557,15 @@ export default function HomePage() {
       </header>
 
       <main className={styles.main}>
+        {taskError && (
+            <p className={styles.errorMessage} role="alert">
+              {taskError}
+            </p>
+          )}
+        
+                
         <section className={styles.statsGrid} aria-label="Task summary">
+          {/* 1. Total Tasks */}
           <article className={styles.statCard}>
             <figure
               className={`${styles.statIcon} ${styles.purpleBackground}`}
@@ -548,6 +589,7 @@ export default function HomePage() {
             </section>
           </article>
 
+          {/* 2. Active Tasks */}
           <article className={styles.statCard}>
             <figure
               className={`${styles.statIcon} ${styles.orangeBackground}`}
@@ -571,6 +613,7 @@ export default function HomePage() {
             </section>
           </article>
 
+          {/* 3. Completed Tasks */}
           <article className={styles.statCard}>
             <figure
               className={`${styles.statIcon} ${styles.greenBackground}`}
@@ -590,6 +633,30 @@ export default function HomePage() {
 
               <p className={styles.statDescription}>
                 Tasks you have completed
+              </p>
+            </section>
+          </article>
+
+          {/* 4. Overdue Tasks */}
+          <article className={styles.statCard}>
+            <figure
+              className={`${styles.statIcon} ${styles.redBackground}`}
+              aria-hidden="true"
+            >
+              <CalendarDays size={27} />
+            </figure>
+
+            <section className={styles.statContent}>
+              <h2 className={styles.statLabel}>Overdue Tasks</h2>
+
+              <output
+                className={`${styles.statNumber} ${styles.redText}`}
+              >
+                {overdueTasks}
+              </output>
+
+              <p className={styles.statDescription}>
+                Tasks past their due date
               </p>
             </section>
           </article>
@@ -658,7 +725,7 @@ export default function HomePage() {
                       event.preventDefault();
                     }
                   }}
-                  onDrop={() => dropTask(status)}
+                  onDrop={() => void dropTask(status)}
                 >
                 <header className={styles.columnHeader}>
                   <section className={styles.columnHeading}>
@@ -690,6 +757,7 @@ export default function HomePage() {
 
                   {columnTasks.map((task) => {
                     const isComplete = task.status === "Complete";
+                    const isOverdue = isTaskOverdue(task);
 
                     return (
                       <li
@@ -706,7 +774,7 @@ export default function HomePage() {
                             className={`${styles.checkbox} ${
                               isComplete ? styles.checkedCheckbox : ""
                             }`}
-                            onClick={() => toggleCompleted(task)}
+                            onClick={() => void toggleCompleted(task)}
                             aria-label={
                               isComplete
                                 ? `Mark ${task.title} as active`
@@ -742,11 +810,22 @@ export default function HomePage() {
 
                         <footer className={styles.taskBottom}>
                           <time
-                            className={`${styles.date} ${column.colourClass}`}
+                            className={`${styles.date} ${
+                              isOverdue
+                                ? styles.overdueDate
+                                : column.colourClass
+                            }`}
                             dateTime={task.dueDate}
                           >
                             <CalendarDays size={14} aria-hidden="true" />
+
                             {formatDate(task.dueDate)}
+
+                            {isOverdue && (
+                              <strong className={styles.overdueLabel}>
+                                | Overdue
+                              </strong>
+                            )}
                           </time>
 
                           <menu className={styles.taskActions}>
@@ -797,7 +876,7 @@ export default function HomePage() {
                                       {filter === "archived" ? (
                                         <button
                                           className={styles.popupActionButton}
-                                          onClick={() => restoreTask(task.id)}
+                                          onClick={() => void restoreTask(task.id)}
                                           type="button"
                                         >
                                           <RotateCcw size={17} aria-hidden="true" />
@@ -809,7 +888,7 @@ export default function HomePage() {
                                             <button
                                               className={styles.popupActionButton}
                                               onClick={() =>
-                                                changeTaskStatus(task.id, "Todo")
+                                                void changeTaskStatus(task.id, "Todo")
                                               }
                                               type="button"
                                             >
@@ -822,7 +901,7 @@ export default function HomePage() {
                                             <button
                                               className={styles.popupActionButton}
                                               onClick={() =>
-                                                changeTaskStatus(task.id, "In-Progress")
+                                                void changeTaskStatus(task.id, "In-Progress")
                                               }
                                               type="button"
                                             >
@@ -835,7 +914,7 @@ export default function HomePage() {
                                             <button
                                               className={styles.popupActionButton}
                                               onClick={() =>
-                                                changeTaskStatus(task.id, "Complete")
+                                                void changeTaskStatus(task.id, "Complete")
                                               }
                                               type="button"
                                             >
@@ -846,7 +925,7 @@ export default function HomePage() {
 
                                           <button
                                             className={`${styles.popupActionButton} ${styles.archiveAction}`}
-                                            onClick={() => archiveTask(task.id)}
+                                            onClick={() => void archiveTask(task.id)}
                                             type="button"
                                           >
                                             <Archive size={17} aria-hidden="true" />
